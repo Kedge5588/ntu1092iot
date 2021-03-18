@@ -12,6 +12,7 @@ import takeVideo from '../images/video-camera.png';
 import visitor from '../images/man.png';
 
 var timeoutID;
+var socket;
 
 export default class Home extends React.Component {
     constructor(props) {
@@ -46,7 +47,7 @@ export default class Home extends React.Component {
         return (
             <div>
                 <Container style={this.styles['align']}>
-                    <Image src={this.state.pic} style={this.styles['standby']}/>
+                    <Image src={this.state.pic} style={this.styles['standby']} id ='video'/>
                     <p>{this.state.time}</p>
                 </Container>
                 <Container style={this.styles['align']}>
@@ -68,15 +69,13 @@ export default class Home extends React.Component {
     camera() {
         camera().then(res => {
             //console.log(res);
+            if(socket) {
+                socket.close();
+            }
             this.setState({
                 pic: 'http://140.112.42.22:8124' + res[0]['img_url'],
                 time: res[0]['time']
             });
-            if (this.socket){
-                if (this.socket.readyState === WebSocket.OPEN) {
-                    this.socket.close();
-                }
-            }
         });
     }
 
@@ -93,28 +92,26 @@ export default class Home extends React.Component {
             // Connects to Pi via websocket
             connect: function(ip) {
                 console.log(ip);
-                var self = this;
-                this.socket = new WebSocket("ws://" + ip  + "/websocket");
+                var self = this,
+                    video = document.getElementById("video");
+                socket = new WebSocket("ws://" + ip  + "/websocket");
 
                 // Request the video stream once connected
-                this.socket.onopen = function() {
+                socket.onopen = function() {
                     console.log("Connected!");
                     self.readCamera();
                 };
 
                 // Currently, all returned messages are video data. However, this is
                 // extensible with full-spec JSON-RPC.
-                this.socket.onmessage = function(messageEvent) {
-                    //video.src = "data:image/jpeg;base64," + messageEvent.data;
-                    this.setState({
-                        pic: "data:image/jpeg;base64," + messageEvent.data
-                    });
+                socket.onmessage = function(messageEvent) {
+                    video.src = "data:image/jpeg;base64," + messageEvent.data;
                 };
             },
 
             // Requests video stream
             readCamera: function() {
-                this.socket.send("read_camera");
+                socket.send("read_camera");
             }
         };
         getVideo().then(res => {
